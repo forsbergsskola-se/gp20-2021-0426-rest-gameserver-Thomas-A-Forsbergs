@@ -1,26 +1,62 @@
 ﻿using System;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 
+// ReSharper disable StringIndexOfIsCultureSpecific.1
+
 namespace TinyBrowser {
     public static class Program {
-        static void Main(string[] arguments) {
-            // Connect to acme.com Server via TCP
-            const string hostName = "example.com";
+        static string FindTextBetweenTags(string original, string start, string end) {
+            var titleIndex = original.IndexOf(start);
+            var title = string.Empty;
+            if (titleIndex != -1) {
+                // Offset the index by the length of the <title>-Tag, to ommit it
+                titleIndex += start.Length;
+                // Find the start of the </title>-End-Tag
+                var titleEndIndex = original.IndexOf(end);
+                if (titleEndIndex > titleIndex) {
+                    // Get the string in between both
+                    title = original[titleIndex..titleEndIndex];
+                }
+            }
+
+            return title;
+        }
+        
+        static void MainProgam(string[] arguments) {
+            const string host = "example.com";
             const int port = 80;
-            var tcpClient = new TcpClient(hostName, port);
+            const string uri = "/";
+            var tcpClient = new TcpClient(host, port);
             var stream = tcpClient.GetStream();
+            var streamWriter = new StreamWriter(stream, Encoding.ASCII);
+            
+            var request = $"GET {uri} HTTP/1.1\r\nHost: {host}\r\n\r\n";
+            streamWriter.Write(request);
+            streamWriter.Flush();
+            
+            var streamReader = new StreamReader(stream);
+            var response = streamReader.ReadToEnd();
+            
+            var uriBuilder = new UriBuilder(null, host);
+            uriBuilder.Path = uri;
+            Console.WriteLine($"Opened {uriBuilder}");
+            
+            const string titleTag = "<title>";
+            var titleIndex = response.IndexOf(titleTag);
+            string title = string.Empty;
+            if (titleIndex != -1) {
+                titleIndex += titleTag.Length;
+                const string titleEndTag = "</title>";
+                var titleEndIndex = response.IndexOf(titleEndTag);
+                if (titleEndIndex > titleIndex) {
+                    title = response[titleIndex..titleEndIndex];
+                }
+            }
+
             // Get the bytes for our HTTP Request
-            var bytes = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost: "+hostName+"\r\n\r\n");
-            // Send them over TCP
-            stream.Write(bytes);
-            var buffer = new byte[1024*2+10];
-            var streamRead = stream.Read(buffer, 0, buffer.Length);
-            var getStringBuffer = Encoding.ASCII.GetString(buffer);
-            Console.Write("Server said: "+getStringBuffer);
-            const string indexOfString = "<title>";
-            // ReSharper disable once StringIndexOfIsCultureSpecific.1
-            Console.WriteLine("Index Of: "+indexOfString+getStringBuffer.IndexOf(indexOfString));
+            Console.WriteLine("Title: " + title);
         }
     }
 }
