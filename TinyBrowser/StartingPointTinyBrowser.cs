@@ -23,20 +23,29 @@ namespace TinyBrowser {
         }
 
         public static void MainMethod() {
-            var host = "acme.com";
+            var host = "example.com";
             var uri = "/";
             // Here, acme.com is only used for DNS-Resolving and gives us an IP
             var tcpClient = new TcpClient(host, 80);
+            // Console.WriteLine($"tcpClient {tcpClient}");
             var stream = tcpClient.GetStream();
+            // Console.WriteLine($"stream {stream}");
             var streamWriter = new StreamWriter(stream, Encoding.ASCII);
-        
+            // Console.WriteLine($"streamWriter {streamWriter}");
+            
             // This is a valid HTTP/1.1-Request to send:
-            var request = $"GET {uri} HTTP/1.1\r\nHost: {host}\r\n\r\n";
+            var request = $"GET {uri} HTTP/1.0\r\nHost: {host}\r\n\r\n";
+            Console.WriteLine($"request {request}");
+            // Console.WriteLine($"before Write");
             streamWriter.Write(request); // add data to the buffer
+            // Console.WriteLine($"after Write");
             streamWriter.Flush(); // actually send the buffered data
+            // Console.WriteLine($"after Flush");
 
             var streamReader = new StreamReader(stream);
+            // Console.WriteLine($"streamReader {streamReader}");
             var response = streamReader.ReadToEnd();
+            Console.WriteLine($"response {response}");
 
             var uriBuilder = new UriBuilder(null, host);
             uriBuilder.Path = uri;
