@@ -1,12 +1,12 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
 
-namespace TinyBrowser {
-    internal static class Program_MarcusNoordstrom {
-        public static void MainMethod() {
+namespace TinyBrowser.Marcus {
+    internal static class Program {
+        static void Main() {
             var tcpClient = new TcpClient();
             const string webSite = "www.acme.com";
             tcpClient.Connect(webSite, 80);
@@ -57,6 +57,7 @@ namespace TinyBrowser {
             var input = Console.ReadLine();
 
             var isNumber = int.TryParse(input, out var num);
+
 
             if (input == "b" || input == "B" || input == "" || !isNumber) {
                 Console.Clear();

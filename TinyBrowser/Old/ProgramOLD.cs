@@ -1,6 +1,6 @@
-﻿namespace TinyBrowser {
-    public static class Program {
-        static void Main() {
+﻿namespace TinyBrowser.Old {
+    public static class ProgramOLD {
+        static void MainOLD() {
             // TinyBrowser.MainMethod();
             // StartingPointTinyBrowser.MainMethod();
             // Program_Exoduz85.MainMethod(); //full function

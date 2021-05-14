@@ -3,7 +3,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Text;
 
-namespace TinyBrowser {
+namespace TinyBrowser.Old {
     public static class StartingPointTinyBrowser {
         static string FindTextBetweenTags(string original, string start, string end) {
             var titleIndex = original.IndexOf(start);

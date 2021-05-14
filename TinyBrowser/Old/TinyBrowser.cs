@@ -5,7 +5,7 @@ using System.Text;
 
 // ReSharper disable StringIndexOfIsCultureSpecific.1
 
-namespace TinyBrowser {
+namespace TinyBrowser.Old {
     public static class TinyBrowser {
         static string FindTextBetweenTags(string original, string start, string end) {
             var titleIndex = original.IndexOf(start);
