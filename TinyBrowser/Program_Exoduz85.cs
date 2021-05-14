@@ -6,59 +6,147 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 namespace TinyBrowser {
-    class Program_Exoduz85 {
+    static class Program_Exoduz85 {
         const int port = 80;
-        const string hostUrl = "acme.com";
-        static readonly string request = $"GET / HTTP/1.1\r\nHost: {hostUrl}\r\n\r\n";
-        static StreamReader sr;
-        static StreamWriter sw;
-        static NetworkStream stream;
-        static TcpClient client;
-        static bool shouldRun = false;
+        static string version = "1.1";
+        static bool shouldRun = true;
+        static string hostname = "acme.com";
+        static string url = $"http://{hostname}/";
+        static List<string> history = new List<string>();
+        static int historyIndexer;
+        static bool newPage = true;
+        static bool isPrintResults = true;
 
         public static void MainMethod() {
-
-            shouldRun = true;
-
             while (shouldRun) {
-                client = new TcpClient(hostUrl, port);
-                stream = client.GetStream();
-                sr = new StreamReader(stream);
-                var encoding = Encoding.ASCII.GetBytes(request);
-                stream.Write(encoding, 0, encoding.Length);
-                var response = sr.ReadToEnd();
-                var header = ExtractHeader(response);
-                var links = ExtractLinks(response);
-                Console.WriteLine(header);
-                for (var index = 0; index < links.Count; index++) {
-                    var str = links[index];
-                    Console.WriteLine($"{index}: {str[0]} ({PrittyfyString(str[1])})");
+                if (newPage) {
+                    history.Add(url);
+                    historyIndexer = history.Count - 1;
                 }
+
+                var targetUrl = history[historyIndexer];
+                var isExternalUrl = IsExternalLink(targetUrl, out var newHost, out var newUrl);
+                if (isExternalUrl) {
+                    hostname = newHost;
+                    targetUrl = newUrl;
+                }
+
+                using var client = new TcpClient();
+                client.ReceiveTimeout = 2000;
+                client.Connect(hostname, port);
+                using var networkStream = client.GetStream();
+                networkStream.ReadTimeout = 2000;
+                using var writer = new StreamWriter(networkStream);
+
+                var request = RequestLine(version, hostname, targetUrl);
+
+                var bytes = Encoding.UTF8.GetBytes(request);
+                networkStream.Write(bytes, 0, bytes.Length);
+                using var reader = new StreamReader(networkStream, Encoding.UTF8);
+                var data = reader.ReadToEnd();
                 client.Close();
-                Console.WriteLine("Which link do you want to follow? (#)");
-                if (int.TryParse(Console.ReadLine(), out var userInput)) {
-                    
+
+                var title = ExtractHeading(data, "Title");
+                if (isPrintResults) Console.WriteLine($"Webpage Title: {title}");
+                if (isPrintResults) Console.WriteLine("Links");
+                var urls = ExtractHyperLinks(data);
+
+                for (int i = 0; i < urls.Count; i++) {
+                    if (isPrintResults)
+                        Console.WriteLine(
+                            $"{(i + ":").PadRight(3)} {PrettifyPrint(urls[i][0].TrimStart().TrimEnd())} ({urls[i][1]})");
+                    urls[i][1] = NormalizeUrl(urls[i][1], hostname);
+                }
+
+                Console.WriteLine("Enter a number from list or chose any of following:     " +
+                                  "b (Go back)     f (Go forward)     h (Show history)     g (Goto (Link))     q (Quit browsing)");
+                var userInput = Console.ReadLine()?.ToLower();
+                newPage = int.TryParse(userInput, out var linksIndex);
+                isPrintResults = !Equals(userInput, "h");
+                switch (userInput) {
+                    default:
+                        if (newPage) url = urls[linksIndex][1];
+                        break;
+                    case "h":
+                        for (var i = 0; i < history.Count; i++) {
+                            var pointer = historyIndexer == i ? "==>" : "   ";
+                            Console.WriteLine($"{pointer} History({i}): {history[i]}");
+                        }
+
+                        break;
+                    case "b":
+                        if (historyIndexer > 0) historyIndexer--;
+                        break;
+                    case "f":
+                        if (history.Count - 1 > historyIndexer) historyIndexer++;
+                        break;
+                    case "g":
+                        Console.WriteLine("Please type in a link (E.g \"Http://www.MyCoolLink.now\")");
+                        url = Console.ReadLine();
+                        newPage = true;
+                        break;
+                    case "q":
+                        shouldRun = false;
+                        break;
                 }
             }
         }
-        public static List<string[]> ExtractLinks(string pageResponse) {
-            List<string[]> hyperLinks = new List<string[]>();
-            var regex = new Regex("<a href=[\"|'](?<link>.*?)[\"|'].*?>(<b>|<img.*?>)?(?<name>.*?)(</b>)?</a>", 
+
+        static List<string[]> ExtractHyperLinks(string html) {
+            List<string[]> list = new List<string[]>();
+            var regex = new Regex("<a href=[\"|'](?<link>.*?)[\"|'].*?>(<b>|<img.*?>)?(?<name>.*?)(</b>)?</a>",
                 RegexOptions.IgnoreCase);
-            if (!regex.IsMatch(pageResponse)) return hyperLinks;
-            foreach(Match match in regex.Matches(pageResponse))
-                hyperLinks.Add(new []{match.Groups["name"].Value, match.Groups["link"].Value});
-            return hyperLinks;
+            if (!regex.IsMatch(html)) return list;
+            foreach (Match match in regex.Matches(html))
+                list.Add(new[] {match.Groups["name"].Value, match.Groups["link"].Value});
+            return list;
         }
-        public static string ExtractHeader(string str) {
-            var first = str.IndexOf("<title>", StringComparison.OrdinalIgnoreCase) + 7;
-            var last = str.LastIndexOf("</title>", StringComparison.OrdinalIgnoreCase);
-            return str[first..last];
+
+        static string ExtractHeading(string data, string info) {
+            return Regex.Match(data, $"<{info}>(?<Info>.*?)</{info}>", RegexOptions.IgnoreCase).Groups["Info"].Value;
         }
-        public static string PrittyfyString(string makePritty) {
-            return makePritty.Length > 15 ? String.Concat(makePritty.Substring(0, 6),
-                "...",
-                makePritty.Substring(makePritty.Length - 7, 6)) : makePritty;
+
+        static string RequestLine(string httpVersion, string host, string url) {
+            var request = $"GET {url}";
+            switch (httpVersion) {
+                case "0.9":
+                    request += "\r\n";
+                    break;
+                case "1.1":
+                    request += $" HTTP/{httpVersion}" +
+                               "\r\nAccept: text/html, charset=utf-8" +
+                               "\r\nAccept-Language: en-US" +
+                               "\r\nUser-Agent: C# program" +
+                               "\r\nConnection: close" +
+                               $"\r\nHost: {host}" + "\r\n\r\n";
+                    break;
+            }
+
+            return request;
+        }
+
+        static bool IsExternalLink(string targetLink, out string host, out string localLink) {
+            host = string.Empty;
+            localLink = targetLink;
+            if (targetLink.Contains("//")) {
+                host = Regex.Match(targetLink, "//(www.|WWW.)?(?<host>.*?)/", RegexOptions.IgnoreCase).Groups["host"].Value;
+                if (targetLink.StartsWith("//"))
+                    localLink = localLink.Remove(0, 2);
+                return true;
+            }
+
+            return false;
+        }
+
+        static string NormalizeUrl(string targetLink, string hostName) {
+            var tar = targetLink.StartsWith("/") ? targetLink : "/" + targetLink;
+            if (!(targetLink.StartsWith("//") | targetLink.StartsWith("http")))
+                return $"http://{hostName}{tar}";
+            return targetLink;
+        }
+
+        static string PrettifyPrint(string s) {
+            return s.Length > 15 ? string.Concat(s.Substring(0, 6), "...", s.Substring(s.Length - 7, 6)) : s.PadRight(15);
         }
     }
 }

@@ -4,26 +4,22 @@ using System.IO;
 using System.Net.Sockets;
 using System.Text;
 
-namespace TinyBrowser
-{
-    internal static class Program_MarcusNoordstrom
-    {
+namespace TinyBrowser {
+    internal static class Program_MarcusNoordstrom {
         public static void MainMethod() {
             var tcpClient = new TcpClient();
             const string webSite = "www.acme.com";
             tcpClient.Connect(webSite, 80);
             var stream = tcpClient.GetStream();
             var send = Encoding.ASCII.GetBytes("GET / HTTP/1.1" + Environment.NewLine +
-                                               "Host: acme.com" + Environment.NewLine+Environment.NewLine);
+                                               "Host: acme.com" + Environment.NewLine + Environment.NewLine);
             stream.Write(send, 0, send.Length);
-            
+
             var sr = new StreamReader(stream);
             var str = sr.ReadToEnd();
             //Console.WriteLine(str);
             tcpClient.Close();
             stream.Close();
-
-            
 
             MainLoop(str);
         }
@@ -34,9 +30,9 @@ namespace TinyBrowser
             tcpClient.Connect(webSite, 80);
             var stream = tcpClient.GetStream();
             var send = Encoding.ASCII.GetBytes($"GET /{subDir} HTTP/1.1" + Environment.NewLine +
-                                               "Host: acme.com" + Environment.NewLine+Environment.NewLine);
+                                               "Host: acme.com" + Environment.NewLine + Environment.NewLine);
             stream.Write(send, 0, send.Length);
-            
+
             var sr = new StreamReader(stream);
             var str = sr.ReadToEnd();
             //Console.WriteLine(str);
@@ -55,14 +51,13 @@ namespace TinyBrowser
                 inputDict.Add(index, link.Key);
                 index++;
             }
-            
+
             Console.WriteLine();
             Console.WriteLine("--Enter a number to go to that link or b/B for going back to the index again--");
             var input = Console.ReadLine();
 
             var isNumber = int.TryParse(input, out var num);
-            
-            
+
             if (input == "b" || input == "B" || input == "" || !isNumber) {
                 Console.Clear();
                 inputDict.TryGetValue(1000, out var b);
@@ -70,7 +65,7 @@ namespace TinyBrowser
             }
 
             inputDict.TryGetValue(num, out var val);
-            
+
             Console.Clear();
             MainLoop(Navigator(val));
         }
@@ -95,20 +90,22 @@ namespace TinyBrowser
                             link += str[i];
                             i++;
                         }
+
                         i += 2;
                         while (str[i] != '<') {
                             name += str[i];
                             i++;
                         }
+
                         if (result.Count == 0) {
-                            result.Add(link, name);    
-                        }
-                        else if (!result.ContainsKey(link) && !result.ContainsValue(name)) {
+                            result.Add(link, name);
+                        } else if (!result.ContainsKey(link) && !result.ContainsValue(name)) {
                             result.Add(link, name);
                         }
                     }
                 }
             }
+
             return result;
         }
     }

@@ -46,6 +46,8 @@ namespace TinyBrowser {
             // Console.WriteLine($"streamReader {streamReader}");
             var response = streamReader.ReadToEnd();
             Console.WriteLine($"response {response}");
+            response.IndexOf(response);
+            // response.Substring("<title>", "</title>");
 
             var uriBuilder = new UriBuilder(null, host);
             uriBuilder.Path = uri;
